@@ -1,0 +1,3 @@
+"""
+Routes - Endpoints da API
+"""

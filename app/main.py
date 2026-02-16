@@ -1,48 +1,61 @@
 # app/main.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-
-# Importa a base declarativa e o motor do banco de dados
+from sqlalchemy.orm import Session
 from app.database import Base, engine
+from app.core.config import settings
+from app.dependencies import get_db, get_current_user
+from app.models.user import User
+from app.routers import auth_router
 
-# Importa todos os modelos para que o SQLAlchemy os reconheça
-from app.models import user, category, product  # noqa: F401
-
-# Cria todas as tabelas no banco de dados (se não existirem)
-# Isso é feito aqui para garantir que as tabelas sejam criadas
-# quando a aplicação FastAPI for iniciada.
+# Criar as tabelas no banco de dados
 Base.metadata.create_all(bind=engine)
 
-# Cria a instância da aplicação FastAPI
+# Criar a aplicação FastAPI
 app = FastAPI(
     title="Personal Shopper API",
-    description="API backend para gerenciar compras de personal shopper.",
-    version="0.1.0",
+    description="API para e-commerce de personal shopper",
+    version="1.0.0",
 )
 
-# Configurar CORS (permitir requisições do frontend)
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Endpoint de saúde para verificar se a API está funcionando
-@app.get("/health", tags=["Health Check"])
-async def health_check():
-    """
-    Verifica se a API está funcionando corretamente.
-    """
-    return {"status": "healthy"}
+# ============================================================================
+# INCLUIR ROUTERS
+# ============================================================================
 
-# Endpoint raiz
+app.include_router(auth_router)
+
+# ============================================================================
+# ROTAS PÚBLICAS
+# ============================================================================
+
 @app.get("/", tags=["Root"])
-async def read_root():
+def read_root():
     """
     Endpoint raiz da API.
-    Retorna uma mensagem de boas-vindas.
     """
-    return {"message": "Bem-vindo à Personal Shopper API!"}
+    return {
+        "message": "Bem-vindo à Personal Shopper API",
+        "version": "1.0.0",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health", tags=["Health"])
+def health_check():
+    """
+    Verificar se a API está funcionando.
+    """
+    return {
+        "status": "ok",
+        "message": "API está funcionando corretamente",
+    }

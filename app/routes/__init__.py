@@ -1,3 +1,3 @@
 """
-Routes - Endpoints da API
+Routers - Endpoints da aplicação
 """

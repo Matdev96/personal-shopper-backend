@@ -7,7 +7,7 @@ from app.database import Base, engine
 from app.core.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.routers import auth_router
+from app.routers import auth_router, categories_router, products_router
 
 # Criar as tabelas no banco de dados
 Base.metadata.create_all(bind=engine)
@@ -33,6 +33,8 @@ app.add_middleware(
 # ============================================================================
 
 app.include_router(auth_router)
+app.include_router(categories_router)
+app.include_router(products_router)
 
 # ============================================================================
 # ROTAS PÚBLICAS

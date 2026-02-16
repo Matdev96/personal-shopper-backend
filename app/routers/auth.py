@@ -66,57 +66,63 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Fazer login e receber um token JWT.
-    
-    Args:
-        credentials: Email e senha do usuário
-        db: Sessão do banco de dados
-        
-    Returns:
-        dict: Token de acesso e tipo de token
-        
-    Raises:
-        HTTPException: Se email ou senha estiverem incorretos
     """
-    # Buscar usuário pelo email
-    user = db.query(User).filter(User.email == credentials.email).first()
+    print(f"DEBUG: Tentando fazer login com email: {credentials.email}")
     
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou senha incorretos",
+    try:
+        # Buscar usuário pelo email
+        user = db.query(User).filter(User.email == credentials.email).first()
+        print(f"DEBUG: Usuário encontrado: {user}")
+        
+        if not user:
+            print(f"DEBUG: Usuário não encontrado")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos",
+            )
+        
+        print(f"DEBUG: Verificando senha...")
+        # Verificar a senha
+        if not verify_password(credentials.password, user.hashed_password):
+            print(f"DEBUG: Senha incorreta")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos",
+            )
+        
+        print(f"DEBUG: Verificando se usuário está ativo...")
+        # Verificar se o usuário está ativo
+        if not user.is_active:
+            print(f"DEBUG: Usuário inativo")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Usuário inativo",
+            )
+        
+        print(f"DEBUG: Criando token de acesso...")
+        # Criar token de acesso
+        access_token_expires = timedelta(minutes=30)
+        access_token = create_access_token(
+            data={"sub": user.email},
+            expires_delta=access_token_expires,
         )
-    
-    # Verificar a senha
-    if not verify_password(credentials.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou senha incorretos",
-        )
-    
-    # Verificar se o usuário está ativo
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo",
-        )
-    
-    # Criar token de acesso
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.email},
-        expires_delta=access_token_expires,
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "username": user.username,
-            "full_name": user.full_name,
-        },
-    }
+        
+        print(f"DEBUG: Token criado com sucesso")
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "full_name": user.full_name,
+            },
+        }
+    except Exception as e:
+        print(f"DEBUG: Erro na função login: {str(e)}")
+        print(f"DEBUG: Tipo do erro: {type(e)}")
+        raise
 
 
 @router.get("/me", response_model=UserResponse)

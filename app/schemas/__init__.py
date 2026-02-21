@@ -16,6 +16,7 @@ from app.schemas.order import (
     OrderItemResponse,
     OrderCreate,
     OrderResponse,
+    OrderStatusEnum,
     StockValidationRequest,
     StockValidationResponse,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "OrderItemResponse",
     "OrderCreate",
     "OrderResponse",
+    "OrderStatusEnum",
     "StockValidationRequest",
     "StockValidationResponse",
 ]

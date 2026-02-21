@@ -7,7 +7,7 @@ from app.database import Base, engine
 from app.core.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.routers import auth_router, categories_router, products_router, stock_router, cart_router
+from app.routers import auth_router, categories_router, products_router, stock_router, cart_router, orders_router
 
 # Criar as tabelas no banco de dados
 Base.metadata.create_all(bind=engine)
@@ -44,6 +44,7 @@ app.include_router(categories_router)
 app.include_router(products_router)
 app.include_router(stock_router)
 app.include_router(cart_router)
+app.include_router(orders_router)
 
 
 # ============================================================================

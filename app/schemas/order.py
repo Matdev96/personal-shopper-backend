@@ -1,6 +1,15 @@
 ﻿from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
+from enum import Enum
+
+class OrderStatusEnum(str, Enum):
+    """Enum para status de pedidos."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
 
 
 class OrderItemCreate(BaseModel):

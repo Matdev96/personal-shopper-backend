@@ -1,8 +1,8 @@
-# app/models/category.py
-
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
+
 
 class Category(Base):
     """
@@ -17,6 +17,9 @@ class Category(Base):
     description = Column(String(500), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relacionamentos
+    products = relationship("Product", back_populates="category")
     
     def __repr__(self):
         return f"<Category(id={self.id}, name={self.name})>"

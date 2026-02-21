@@ -1,5 +1,3 @@
-# app/main.py
-
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from fastapi import FastAPI, Depends
@@ -9,7 +7,7 @@ from app.database import Base, engine
 from app.core.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.routers import auth_router, categories_router, products_router
+from app.routers import auth_router, categories_router, products_router, stock_router
 
 # Criar as tabelas no banco de dados
 Base.metadata.create_all(bind=engine)
@@ -44,6 +42,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth_router)
 app.include_router(categories_router)
 app.include_router(products_router)
+app.include_router(stock_router)
 
 # ============================================================================
 # ROTAS PÚBLICAS

@@ -1,9 +1,8 @@
-
-# app/models/user.py
-
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
+
 
 class User(Base):
     """
@@ -22,6 +21,10 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relacionamentos
+    cart = relationship("Cart", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, username={self.username})>"

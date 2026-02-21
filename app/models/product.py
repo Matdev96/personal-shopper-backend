@@ -1,8 +1,8 @@
-# app/models/product.py
-
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.database import Base
+
 
 class Product(Base):
     """
@@ -24,6 +24,11 @@ class Product(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relacionamentos
+    category = relationship("Category", back_populates="products")
+    cart_items = relationship("CartItem", back_populates="product")
+    order_items = relationship("OrderItem", back_populates="product")
     
     def __repr__(self):
         return f"<Product(id={self.id}, name={self.name}, price={self.price}, size={self.size}, color={self.color}, category_id={self.category_id})>"

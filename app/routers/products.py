@@ -1,13 +1,13 @@
-# app/routers/products.py
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, ProductFilter
+from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.models.product import Product
 from app.models.category import Category
 from app.dependencies import get_db, get_current_admin_user
 from app.models.user import User
+from fastapi import File, UploadFile
+from app.utils.image_handler import save_and_optimize_image, delete_image
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -47,6 +47,8 @@ def create_product(
         name=product_data.name,
         description=product_data.description,
         price=product_data.price,
+        size=product_data.size,
+        color=product_data.color,
         category_id=product_data.category_id,
         image_url=product_data.image_url,
         stock=product_data.stock,
@@ -66,6 +68,8 @@ def list_products(
     min_price: Optional[float] = Query(None, ge=0, description="Preço mínimo"),
     max_price: Optional[float] = Query(None, ge=0, description="Preço máximo"),
     search: Optional[str] = Query(None, max_length=255, description="Buscar por nome"),
+    size: Optional[str] = Query(None, max_length=50, description="Filtrar por tamanho"),
+    color: Optional[str] = Query(None, max_length=100, description="Filtrar por cor"),
     is_active: Optional[bool] = Query(None, description="Apenas produtos ativos"),
     skip: int = Query(0, ge=0, description="Paginação - quantos pular"),
     limit: int = Query(10, ge=1, le=100, description="Paginação - quantos retornar"),
@@ -80,6 +84,8 @@ def list_products(
         min_price: Preço mínimo
         max_price: Preço máximo
         search: Buscar por nome
+        size: Filtrar por tamanho
+        color: Filtrar por cor
         is_active: Apenas produtos ativos
         skip: Quantos produtos pular (paginação)
         limit: Quantos produtos retornar (máximo 100)
@@ -105,6 +111,14 @@ def list_products(
     # Buscar por nome
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
+    
+    # Filtrar por tamanho
+    if size:
+        query = query.filter(Product.size.ilike(f"%{size}%"))
+    
+    # Filtrar por cor
+    if color:
+        query = query.filter(Product.color.ilike(f"%{color}%"))
     
     # Filtrar por status ativo
     if is_active is not None:
@@ -199,6 +213,12 @@ def update_product(
     if product_data.price is not None:
         product.price = product_data.price
     
+    if product_data.size is not None:
+        product.size = product_data.size
+    
+    if product_data.color is not None:
+        product.color = product_data.color
+    
     if product_data.image_url is not None:
         product.image_url = product_data.image_url
     
@@ -213,6 +233,54 @@ def update_product(
     
     return product
 
+@router.post("/upload", status_code=status.HTTP_200_OK)
+async def upload_product_image(
+    product_id: int = Query(..., description="ID do produto"),
+    file: UploadFile = File(..., description="Arquivo de imagem"),
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Fazer upload de imagem para um produto.
+    Requer autenticação e permissão de admin.
+    
+    Args:
+        product_id: ID do produto
+        file: Arquivo de imagem (JPG, PNG, WebP)
+        current_user: Usuário autenticado (deve ser admin)
+        db: Sessão do banco de dados
+        
+    Returns:
+        dict: Dados do produto atualizado com a nova imagem
+        
+    Raises:
+        HTTPException: Se o produto não existe ou arquivo inválido
+    """
+    # Verificar se o produto existe
+    product = db.query(Product).filter(Product.id == product_id).first()
+    
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado",
+        )
+    
+    # Deletar imagem antiga se existir
+    if product.image_url:
+        delete_image(product.image_url)
+    
+    # Salvar e otimizar nova imagem
+    image_path = await save_and_optimize_image(file)
+    
+    # Atualizar produto com novo caminho de imagem
+    product.image_url = image_path
+    db.commit()
+    db.refresh(product)
+    
+    return {
+        "message": "Imagem enviada com sucesso",
+        "product": ProductResponse.model_validate(product),
+    }
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(

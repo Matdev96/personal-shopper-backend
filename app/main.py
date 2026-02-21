@@ -1,5 +1,7 @@
 # app/main.py
 
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -27,6 +29,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Criar diretório de uploads se não existir
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+
+# Servir arquivos estáticos (imagens)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ============================================================================
 # INCLUIR ROUTERS

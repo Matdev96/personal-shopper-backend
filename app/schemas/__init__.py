@@ -1,12 +1,11 @@
-# app/schemas/__init__.py
-
-"""
-Schemas - Validação de dados com Pydantic
-"""
-
 from app.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
-from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, ProductFilter
+from app.schemas.product import (
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+    ProductBase,
+)
 
 __all__ = [
     "UserCreate",
@@ -19,5 +18,5 @@ __all__ = [
     "ProductCreate",
     "ProductResponse",
     "ProductUpdate",
-    "ProductFilter",
+    "ProductBase",
 ]

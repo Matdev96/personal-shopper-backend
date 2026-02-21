@@ -1,9 +1,7 @@
-# app/routers/products.py
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, ProductFilter
+from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.models.product import Product
 from app.models.category import Category
 from app.dependencies import get_db, get_current_admin_user
@@ -47,6 +45,8 @@ def create_product(
         name=product_data.name,
         description=product_data.description,
         price=product_data.price,
+        size=product_data.size,
+        color=product_data.color,
         category_id=product_data.category_id,
         image_url=product_data.image_url,
         stock=product_data.stock,
@@ -66,6 +66,8 @@ def list_products(
     min_price: Optional[float] = Query(None, ge=0, description="Preço mínimo"),
     max_price: Optional[float] = Query(None, ge=0, description="Preço máximo"),
     search: Optional[str] = Query(None, max_length=255, description="Buscar por nome"),
+    size: Optional[str] = Query(None, max_length=50, description="Filtrar por tamanho"),
+    color: Optional[str] = Query(None, max_length=100, description="Filtrar por cor"),
     is_active: Optional[bool] = Query(None, description="Apenas produtos ativos"),
     skip: int = Query(0, ge=0, description="Paginação - quantos pular"),
     limit: int = Query(10, ge=1, le=100, description="Paginação - quantos retornar"),
@@ -80,6 +82,8 @@ def list_products(
         min_price: Preço mínimo
         max_price: Preço máximo
         search: Buscar por nome
+        size: Filtrar por tamanho
+        color: Filtrar por cor
         is_active: Apenas produtos ativos
         skip: Quantos produtos pular (paginação)
         limit: Quantos produtos retornar (máximo 100)
@@ -105,6 +109,14 @@ def list_products(
     # Buscar por nome
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
+    
+    # Filtrar por tamanho
+    if size:
+        query = query.filter(Product.size.ilike(f"%{size}%"))
+    
+    # Filtrar por cor
+    if color:
+        query = query.filter(Product.color.ilike(f"%{color}%"))
     
     # Filtrar por status ativo
     if is_active is not None:
@@ -198,6 +210,12 @@ def update_product(
     
     if product_data.price is not None:
         product.price = product_data.price
+    
+    if product_data.size is not None:
+        product.size = product_data.size
+    
+    if product_data.color is not None:
+        product.color = product_data.color
     
     if product_data.image_url is not None:
         product.image_url = product_data.image_url

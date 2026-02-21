@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
+from typing import Optional
 
 class ProductBase(BaseModel):
     """Schema base para Product com campos comuns."""
@@ -44,3 +45,18 @@ class ProductResponse(ProductBase):
 class ProductUpload(BaseModel):
     """Schema para upload de imagem de produto."""
     product_id: int = Field(..., description="ID do produto")
+
+class ProductFilterParams(BaseModel):
+    """Schema para parâmetros de filtro de produtos."""
+    skip: int = 0
+    limit: int = 10
+    category_id: Optional[int] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    in_stock: Optional[bool] = None
+    search: Optional[str] = None
+    sort_by: Optional[str] = "created_at"  # created_at, price, name
+    sort_order: Optional[str] = "desc"  # asc, desc
+    
+    class Config:
+        from_attributes = True

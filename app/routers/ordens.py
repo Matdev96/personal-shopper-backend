@@ -8,33 +8,98 @@ from app.models.product import Product
 from app.models.user import User
 from app.dependencies import get_db, get_current_user
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
 @router.get("", response_model=List[OrderResponse])
 def list_orders(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 10,
+    status_filter: Optional[str] = None,
+    min_date: Optional[str] = None,
+    max_date: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
-    Listar todos os pedidos do usuário.
+    Listar todos os pedidos do usuário com filtros e paginação.
     
     Args:
+        skip: Número de registros a pular (padrão: 0)
+        limit: Número máximo de registros a retornar (padrão: 10)
+        status_filter: Filtrar por status (pending, processing, shipped, delivered, cancelled)
+        min_date: Data mínima (formato: YYYY-MM-DD)
+        max_date: Data máxima (formato: YYYY-MM-DD)
+        min_price: Preço mínimo
+        max_price: Preço máximo
+        sort_by: Campo para ordenação (created_at, total_price)
+        sort_order: Ordem de classificação (asc, desc)
         current_user: Usuário autenticado
         db: Sessão do banco de dados
-        skip: Número de registros a pular (paginação)
-        limit: Número máximo de registros a retornar
         
     Returns:
-        List[OrderResponse]: Lista de pedidos do usuário
+        List[OrderResponse]: Lista de pedidos filtrados e paginados
     """
-    orders = db.query(Order).filter(
-        Order.user_id == current_user.id
-    ).order_by(desc(Order.created_at)).offset(skip).limit(limit).all()
+    from datetime import datetime
+    
+    # Validar parâmetros
+    if skip < 0:
+        skip = 0
+    if limit < 1 or limit > 100:
+        limit = 10
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    if sort_by not in ["created_at", "total_price"]:
+        sort_by = "created_at"
+    
+    # Construir query base
+    query = db.query(Order).filter(Order.user_id == current_user.id)
+    
+    # Aplicar filtros
+    if status_filter:
+        valid_statuses = [status.value for status in OrderStatus]
+        if status_filter in valid_statuses:
+            query = query.filter(Order.status == OrderStatus(status_filter))
+    
+    if min_date:
+        try:
+            min_datetime = datetime.fromisoformat(min_date)
+            query = query.filter(Order.created_at >= min_datetime)
+        except ValueError:
+            pass
+    
+    if max_date:
+        try:
+            max_datetime = datetime.fromisoformat(max_date)
+            query = query.filter(Order.created_at <= max_datetime)
+        except ValueError:
+            pass
+    
+    if min_price is not None:
+        query = query.filter(Order.total_price >= min_price)
+    
+    if max_price is not None:
+        query = query.filter(Order.total_price <= max_price)
+    
+    # Aplicar ordenação
+    if sort_by == "total_price":
+        sort_column = Order.total_price
+    else:
+        sort_column = Order.created_at
+    
+    if sort_order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    # Aplicar paginação
+    orders = query.offset(skip).limit(limit).all()
     
     return orders
 

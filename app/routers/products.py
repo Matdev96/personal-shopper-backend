@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.models.product import Product
 from app.models.category import Category
@@ -62,67 +62,85 @@ def create_product(
     return new_product
 
 
-@router.get("", response_model=list[ProductResponse])
+@router.get("", response_model=List[ProductResponse])
 def list_products(
-    category_id: Optional[int] = Query(None, description="Filtrar por categoria"),
-    min_price: Optional[float] = Query(None, ge=0, description="Preço mínimo"),
-    max_price: Optional[float] = Query(None, ge=0, description="Preço máximo"),
-    search: Optional[str] = Query(None, max_length=255, description="Buscar por nome"),
-    size: Optional[str] = Query(None, max_length=50, description="Filtrar por tamanho"),
-    color: Optional[str] = Query(None, max_length=100, description="Filtrar por cor"),
-    is_active: Optional[bool] = Query(None, description="Apenas produtos ativos"),
-    skip: int = Query(0, ge=0, description="Paginação - quantos pular"),
-    limit: int = Query(10, ge=1, le=100, description="Paginação - quantos retornar"),
+    skip: int = 0,
+    limit: int = 10,
+    category_id: Optional[int] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    in_stock: Optional[bool] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
     db: Session = Depends(get_db),
 ):
     """
-    Listar produtos com filtros.
-    Endpoint público (não requer autenticação).
+    Listar produtos com filtros e paginação.
     
     Args:
-        category_id: Filtrar por categoria
+        skip: Número de registros a pular (padrão: 0)
+        limit: Número máximo de registros a retornar (padrão: 10)
+        category_id: Filtrar por ID da categoria
         min_price: Preço mínimo
         max_price: Preço máximo
-        search: Buscar por nome
-        size: Filtrar por tamanho
-        color: Filtrar por cor
-        is_active: Apenas produtos ativos
-        skip: Quantos produtos pular (paginação)
-        limit: Quantos produtos retornar (máximo 100)
+        in_stock: Filtrar por disponibilidade (True = em estoque, False = fora de estoque)
+        search: Buscar por nome do produto
+        sort_by: Campo para ordenação (created_at, price, name)
+        sort_order: Ordem de classificação (asc, desc)
         db: Sessão do banco de dados
         
     Returns:
-        list[ProductResponse]: Lista de produtos
+        List[ProductResponse]: Lista de produtos filtrados e paginados
     """
-    query = db.query(Product)
+        # Validar parâmetros
+    if skip < 0:
+        skip = 0
+    if limit < 1 or limit > 100:
+        limit = 10
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    if sort_by not in ["created_at", "price", "name"]:
+        sort_by = "created_at"
     
-    # Filtrar por categoria
-    if category_id is not None:
+    # Construir query base - filtrar apenas produtos ativos
+    query = db.query(Product).filter(Product.is_active == True)
+    
+    # Aplicar filtros
+    if category_id:
         query = query.filter(Product.category_id == category_id)
     
-    # Filtrar por preço mínimo
     if min_price is not None:
         query = query.filter(Product.price >= min_price)
     
-    # Filtrar por preço máximo
     if max_price is not None:
         query = query.filter(Product.price <= max_price)
     
-    # Buscar por nome
+    if in_stock is not None:
+        if in_stock:
+            query = query.filter(Product.stock > 0)
+        else:
+            query = query.filter(Product.stock == 0)
+    
     if search:
-        query = query.filter(Product.name.ilike(f"%{search}%"))
+        search_term = f"%{search}%"
+        query = query.filter(
+            (Product.name.ilike(search_term)) | 
+            (Product.description.ilike(search_term))
+        )
     
-    # Filtrar por tamanho
-    if size:
-        query = query.filter(Product.size.ilike(f"%{size}%"))
+    # Aplicar ordenação
+    if sort_by == "price":
+        sort_column = Product.price
+    elif sort_by == "name":
+        sort_column = Product.name
+    else:
+        sort_column = Product.created_at
     
-    # Filtrar por cor
-    if color:
-        query = query.filter(Product.color.ilike(f"%{color}%"))
-    
-    # Filtrar por status ativo
-    if is_active is not None:
-        query = query.filter(Product.is_active == is_active)
+    if sort_order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
     
     # Aplicar paginação
     products = query.offset(skip).limit(limit).all()

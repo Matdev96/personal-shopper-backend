@@ -5,6 +5,7 @@ from app.models.cart import Cart, CartItem
 from app.models.product import Product
 from app.models.user import User
 from app.dependencies import get_db, get_current_user
+from typing import List
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -15,15 +16,14 @@ def get_cart(
     db: Session = Depends(get_db),
 ):
     """
-    Obter o carrinho do usuário.
-    Se o carrinho não existe, retorna erro 404.
+    Obter o carrinho do usuário com todos os itens.
     
     Args:
         current_user: Usuário autenticado
         db: Sessão do banco de dados
         
     Returns:
-        CartResponse: Dados do carrinho
+        CartResponse: Dados do carrinho com itens
         
     Raises:
         HTTPException: Se o carrinho não existe
@@ -33,11 +33,74 @@ def get_cart(
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Carrinho não encontrado. Adicione um item para criar o carrinho.",
+            detail="Carrinho não encontrado",
         )
     
     return cart
 
+@router.get("/items", response_model=List[CartItemResponse])
+def list_cart_items(
+    skip: int = 0,
+    limit: int = 10,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Listar itens do carrinho com paginação e ordenação.
+    
+    Args:
+        skip: Número de registros a pular (padrão: 0)
+        limit: Número máximo de registros a retornar (padrão: 10)
+        sort_by: Campo para ordenação (created_at, price_at_time)
+        sort_order: Ordem de classificação (asc, desc)
+        current_user: Usuário autenticado
+        db: Sessão do banco de dados
+        
+    Returns:
+        List[CartItemResponse]: Lista de itens do carrinho
+        
+    Raises:
+        HTTPException: Se o carrinho não existe
+    """
+    # Validar parâmetros
+    if skip < 0:
+        skip = 0
+    if limit < 1 or limit > 100:
+        limit = 10
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
+    if sort_by not in ["created_at", "price_at_time"]:
+        sort_by = "created_at"
+    
+    # Obter carrinho do usuário
+    cart = db.query(Cart).filter(Cart.user_id == current_user.id).first()
+    
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Carrinho não encontrado",
+        )
+    
+    # Construir query
+    query = db.query(CartItem).filter(CartItem.cart_id == cart.id)
+    
+    # Aplicar ordenação
+    if sort_by == "price_at_time":
+        sort_column = CartItem.price_at_time
+    else:
+        sort_column = CartItem.created_at
+    
+    if sort_order == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    # Aplicar paginação
+    items = query.offset(skip).limit(limit).all()
+    
+    return items
 
 @router.post("/items", response_model=CartItemResponse, status_code=status.HTTP_201_CREATED)
 def add_item_to_cart(

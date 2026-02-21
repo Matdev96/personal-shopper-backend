@@ -165,11 +165,28 @@ def create_order(
             detail="Pedido deve conter pelo menos um item",
         )
     
+    # Validar limite máximo de itens
+    if len(order_data.items) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pedido não pode conter mais de 100 itens diferentes",
+        )
+    
     # Verificar estoque e calcular total
     total_price = 0.0
     order_items_data = []
+    product_ids_in_order = set()
     
     for item in order_data.items:
+        # Validar que não há produtos duplicados
+        if item.product_id in product_ids_in_order:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Produto com ID {item.product_id} aparece mais de uma vez no pedido",
+            )
+        product_ids_in_order.add(item.product_id)
+        
+        # Verificar se o produto existe
         product = db.query(Product).filter(Product.id == item.product_id).first()
         
         if not product:
@@ -178,10 +195,18 @@ def create_order(
                 detail=f"Produto com ID {item.product_id} não encontrado",
             )
         
+        # Verificar se o produto está ativo
+        if not product.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Produto '{product.name}' não está disponível para compra",
+            )
+        
+        # Verificar estoque
         if product.stock < item.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Estoque insuficiente para {product.name}. Disponível: {product.stock}",
+                detail=f"Estoque insuficiente para '{product.name}'. Disponível: {product.stock}, Solicitado: {item.quantity}",
             )
         
         item_total = product.price * item.quantity
@@ -192,6 +217,20 @@ def create_order(
             "quantity": item.quantity,
             "price_at_time": product.price,
         })
+    
+    # Validar preço total
+    if total_price <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Preço total do pedido deve ser maior que zero",
+        )
+    
+    # Validar endereço de entrega
+    if not order_data.shipping_address or len(order_data.shipping_address.strip()) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Endereço de entrega é obrigatório",
+        )
     
     # Criar pedido
     order = Order(

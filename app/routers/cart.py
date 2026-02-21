@@ -124,6 +124,26 @@ def add_item_to_cart(
     Raises:
         HTTPException: Se o produto não existe ou não há estoque
     """
+    # Validar que product_id é válido
+    if item.product_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID do produto deve ser um número positivo",
+        )
+    
+    # Validar que quantity é válido
+    if item.quantity <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantidade deve ser maior que zero",
+        )
+    
+    if item.quantity > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantidade não pode exceder 1000 unidades",
+        )
+    
     # Verificar se o produto existe
     product = db.query(Product).filter(Product.id == item.product_id).first()
     
@@ -133,11 +153,18 @@ def add_item_to_cart(
             detail=f"Produto com ID {item.product_id} não encontrado",
         )
     
+    # Verificar se o produto está ativo
+    if not product.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Produto '{product.name}' não está disponível para compra",
+        )
+    
     # Verificar se há estoque
     if product.stock < item.quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Estoque insuficiente. Disponível: {product.stock}",
+            detail=f"Estoque insuficiente para '{product.name}'. Disponível: {product.stock}, Solicitado: {item.quantity}",
         )
     
     # Obter ou criar carrinho
@@ -158,14 +185,31 @@ def add_item_to_cart(
         # Atualizar quantidade
         new_quantity = cart_item.quantity + item.quantity
         
+        # Validar nova quantidade
+        if new_quantity > 1000:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Quantidade total não pode exceder 1000 unidades. Atual: {cart_item.quantity}, Solicitado: {item.quantity}",
+            )
+        
+        # Verificar estoque para nova quantidade
         if product.stock < new_quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Estoque insuficiente. Disponível: {product.stock}",
+                detail=f"Estoque insuficiente para '{product.name}'. Disponível: {product.stock}, Total solicitado: {new_quantity}",
             )
         
         cart_item.quantity = new_quantity
     else:
+        # Validar limite de itens diferentes no carrinho
+        current_items_count = db.query(CartItem).filter(CartItem.cart_id == cart.id).count()
+        
+        if current_items_count >= 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Carrinho não pode conter mais de 100 produtos diferentes",
+            )
+        
         # Criar novo item
         cart_item = CartItem(
             cart_id=cart.id,
@@ -203,6 +247,26 @@ def update_cart_item(
     Raises:
         HTTPException: Se o item não existe, não pertence ao usuário ou quantidade é inválida
     """
+    # Validar item_id
+    if item_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID do item deve ser um número positivo",
+        )
+    
+    # Validar quantidade
+    if quantity <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantidade deve ser maior que zero",
+        )
+    
+    if quantity > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantidade não pode exceder 1000 unidades",
+        )
+    
     # Verificar se o item existe e pertence ao usuário
     cart_item = db.query(CartItem).join(Cart).filter(
         CartItem.id == item_id,
@@ -215,20 +279,27 @@ def update_cart_item(
             detail="Item do carrinho não encontrado",
         )
     
-    # Validar quantidade
-    if quantity <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Quantidade deve ser maior que 0",
-        )
-    
-    # Verificar estoque
+    # Verificar se o produto ainda existe
     product = db.query(Product).filter(Product.id == cart_item.product_id).first()
     
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Produto associado ao item não existe mais",
+        )
+    
+    # Verificar se o produto ainda está ativo
+    if not product.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Produto '{product.name}' não está mais disponível para compra",
+        )
+    
+    # Verificar estoque para nova quantidade
     if product.stock < quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Estoque insuficiente. Disponível: {product.stock}",
+            detail=f"Estoque insuficiente para '{product.name}'. Disponível: {product.stock}, Solicitado: {quantity}",
         )
     
     # Atualizar quantidade

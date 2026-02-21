@@ -1,20 +1,37 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional
 from datetime import datetime
 
 
-class CartItemCreate(BaseModel):
-    """Schema para adicionar item ao carrinho."""
-    product_id: int = Field(..., description="ID do produto")
-    quantity: int = Field(..., gt=0, description="Quantidade desejada")
+class CartItemBase(BaseModel):
+    """Base para item do carrinho."""
+    product_id: int = Field(..., gt=0, description="ID do produto")
+    quantity: int = Field(..., gt=0, description="Quantidade do item")
+    
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        """Validar que quantidade é um número inteiro positivo."""
+        if not isinstance(v, int):
+            raise ValueError('Quantidade deve ser um número inteiro')
+        if v <= 0:
+            raise ValueError('Quantidade deve ser maior que 0')
+        if v > 1000:
+            raise ValueError('Quantidade não pode exceder 1000 unidades')
+        return v
 
 
-class CartItemResponse(BaseModel):
+class CartItemCreate(CartItemBase):
+    """Schema para criar item do carrinho."""
+    pass
+
+
+class CartItemResponse(CartItemBase):
     """Schema para resposta de item do carrinho."""
     id: int
-    product_id: int
-    quantity: int
-    price_at_time: float = Field(..., description="Preço no momento da adição")
+    cart_id: int
+    price_at_time: float = Field(..., gt=0, description="Preço do produto no momento da adição")
+    created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True
@@ -24,68 +41,35 @@ class CartResponse(BaseModel):
     """Schema para resposta do carrinho."""
     id: int
     user_id: int
-    items: list[CartItemResponse] = Field(default_factory=list)
-    total_price: float = Field(default=0.0, description="Preço total do carrinho")
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    items: List[CartItemResponse] = []
+    created_at: datetime
+    updated_at: datetime
+    
+    @property
+    def total_items(self) -> int:
+        """Calcular total de itens no carrinho."""
+        return sum(item.quantity for item in self.items)
+    
+    @property
+    def total_price(self) -> float:
+        """Calcular preço total do carrinho."""
+        return sum(item.price_at_time * item.quantity for item in self.items)
     
     class Config:
         from_attributes = True
 
 
-class OrderItemCreate(BaseModel):
-    """Schema para criar item do pedido."""
-    product_id: int = Field(..., description="ID do produto")
-    quantity: int = Field(..., gt=0, description="Quantidade")
-    price: float = Field(..., gt=0, description="Preço unitário")
-
-
-class OrderItemResponse(BaseModel):
-    """Schema para resposta de item do pedido."""
-    id: int
-    order_id: int
-    product_id: int
-    quantity: int
-    price: float
-    subtotal: float = Field(..., description="Quantidade × Preço")
+class CartItemUpdate(BaseModel):
+    """Schema para atualizar item do carrinho."""
+    quantity: int = Field(..., gt=0, description="Nova quantidade")
     
-    class Config:
-        from_attributes = True
-
-
-class OrderCreate(BaseModel):
-    """Schema para criar um pedido."""
-    items: list[OrderItemCreate] = Field(..., min_items=1, description="Itens do pedido")
-    shipping_address: str = Field(..., min_length=10, max_length=500, description="Endereço de entrega")
-    payment_method: str = Field(..., description="Método de pagamento (credit_card, debit_card, paypal)")
-
-
-class OrderResponse(BaseModel):
-    """Schema para resposta de um pedido."""
-    id: int
-    user_id: int
-    items: list[OrderItemResponse] = Field(default_factory=list)
-    total_price: float = Field(..., description="Preço total do pedido")
-    status: str = Field(..., description="Status do pedido (pending, confirmed, shipped, delivered, cancelled)")
-    shipping_address: str
-    payment_method: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-
-class StockValidationRequest(BaseModel):
-    """Schema para validar estoque."""
-    items: list[OrderItemCreate] = Field(..., min_items=1, description="Itens para validar")
-
-
-class StockValidationResponse(BaseModel):
-    """Schema para resposta de validação de estoque."""
-    is_valid: bool = Field(..., description="Se todos os itens têm estoque")
-    message: str = Field(..., description="Mensagem de validação")
-    unavailable_items: list[dict] = Field(default_factory=list, description="Itens sem estoque")
-    
-    class Config:
-        from_attributes = True
+    @validator('quantity')
+    def validate_quantity(cls, v):
+        """Validar que quantidade é um número inteiro positivo."""
+        if not isinstance(v, int):
+            raise ValueError('Quantidade deve ser um número inteiro')
+        if v <= 0:
+            raise ValueError('Quantidade deve ser maior que 0')
+        if v > 1000:
+            raise ValueError('Quantidade não pode exceder 1000 unidades')
+        return v

@@ -30,8 +30,7 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = Field(None, max_length=500)
     stock: Optional[int] = Field(None, ge=0)
     is_active: Optional[bool] = None
-
-
+    
 class ProductResponse(ProductBase):
     """Schema para resposta de um produto."""
     id: int
@@ -41,3 +40,7 @@ class ProductResponse(ProductBase):
     
     class Config:
         from_attributes = True
+
+class ProductUpload(BaseModel):
+    """Schema para upload de imagem de produto."""
+    product_id: int = Field(..., description="ID do produto")

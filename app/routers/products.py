@@ -6,6 +6,8 @@ from app.models.product import Product
 from app.models.category import Category
 from app.dependencies import get_db, get_current_admin_user
 from app.models.user import User
+from fastapi import File, UploadFile
+from app.utils.image_handler import save_and_optimize_image, delete_image
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -231,6 +233,54 @@ def update_product(
     
     return product
 
+@router.post("/upload", status_code=status.HTTP_200_OK)
+async def upload_product_image(
+    product_id: int = Query(..., description="ID do produto"),
+    file: UploadFile = File(..., description="Arquivo de imagem"),
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Fazer upload de imagem para um produto.
+    Requer autenticação e permissão de admin.
+    
+    Args:
+        product_id: ID do produto
+        file: Arquivo de imagem (JPG, PNG, WebP)
+        current_user: Usuário autenticado (deve ser admin)
+        db: Sessão do banco de dados
+        
+    Returns:
+        dict: Dados do produto atualizado com a nova imagem
+        
+    Raises:
+        HTTPException: Se o produto não existe ou arquivo inválido
+    """
+    # Verificar se o produto existe
+    product = db.query(Product).filter(Product.id == product_id).first()
+    
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado",
+        )
+    
+    # Deletar imagem antiga se existir
+    if product.image_url:
+        delete_image(product.image_url)
+    
+    # Salvar e otimizar nova imagem
+    image_path = await save_and_optimize_image(file)
+    
+    # Atualizar produto com novo caminho de imagem
+    product.image_url = image_path
+    db.commit()
+    db.refresh(product)
+    
+    return {
+        "message": "Imagem enviada com sucesso",
+        "product": ProductResponse.model_validate(product),
+    }
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(

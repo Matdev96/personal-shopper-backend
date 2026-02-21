@@ -16,6 +16,8 @@ class Product(Base):
     name = Column(String(255), index=True, nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Float, nullable=False)
+    size = Column(String(50), nullable=True)
+    color = Column(String(100), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     image_url = Column(String(500), nullable=True)
     stock = Column(Integer, default=0)
@@ -24,4 +26,4 @@ class Product(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     def __repr__(self):
-        return f"<Product(id={self.id}, name={self.name}, price={self.price})>"
+        return f"<Product(id={self.id}, name={self.name}, price={self.price}, size={self.size}, color={self.color}, category_id={self.category_id})>"

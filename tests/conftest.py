@@ -75,10 +75,12 @@ def client(db: Session):
 @pytest.fixture(scope="function")
 def test_user(db: Session):
     """Fixture para criar um usuário de teste."""
+    from app.core.security import hash_password
     user = User(
         email="test@example.com",
+        username="test",
         full_name="Test User",
-        hashed_password="hashed_password_123",
+        hashed_password=hash_password("TestPassword123!"),
         is_admin=False,
         is_active=True,
     )
@@ -91,10 +93,12 @@ def test_user(db: Session):
 @pytest.fixture(scope="function")
 def test_admin_user(db: Session):
     """Fixture para criar um usuário admin de teste."""
+    from app.core.security import hash_password
     admin = User(
         email="admin@example.com",
+        username="admin",
         full_name="Admin User",
-        hashed_password="hashed_password_123",
+        hashed_password=hash_password("AdminPassword123!"),
         is_admin=True,
         is_active=True,
     )
@@ -110,7 +114,6 @@ def test_category(db: Session):
     category = Category(
         name="Test Category",
         description="This is a test category for testing purposes",
-        is_active=True,
     )
     db.add(category)
     db.commit()
@@ -119,11 +122,13 @@ def test_category(db: Session):
 
 
 @pytest.fixture(scope="function")
-def test_product(db: Session, test_category: Category):
-    """Fixture para criar um produto de teste."""
+def test_product(test_category, db):
+    """Fixture para criar um produto de teste"""
+    from app.models.product import Product
+    
     product = Product(
         name="Test Product",
-        description="This is a test product with detailed description",
+        description="This is a test product",
         price=99.99,
         size="M",
         color="Blue",
@@ -134,7 +139,13 @@ def test_product(db: Session, test_category: Category):
     )
     db.add(product)
     db.commit()
-    db.refresh(product)
+    
+    # ✅ IMPORTANTE: Retornar ID em vez do objeto para evitar DetachedInstanceError
+    product_id = product.id
+    db.expunge_all()  # Limpar a sessão
+    
+    # Consultar novamente para retornar objeto fresco
+    product = db.query(Product).filter(Product.id == product_id).first()
     return product
 
 

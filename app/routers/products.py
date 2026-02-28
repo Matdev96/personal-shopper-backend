@@ -21,46 +21,39 @@ def create_product(
     """
     Criar um novo produto.
     Requer autenticação e permissão de admin.
-    
+
     Args:
         product_data: Dados do produto
         current_user: Usuário autenticado (deve ser admin)
         db: Sessão do banco de dados
-        
+
     Returns:
         ProductResponse: Dados do produto criado
-        
+
     Raises:
         HTTPException: Se a categoria não existe ou dados inválidos
     """
     # Verificar se a categoria existe
     category = db.query(Category).filter(Category.id == product_data.category_id).first()
-    
+
     if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Categoria com ID {product_data.category_id} não encontrada",
         )
-    
-    # Verificar se a categoria está ativa
-    if not category.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não é possível adicionar produtos a uma categoria inativa",
-        )
-    
+
     # Verificar se já existe um produto com o mesmo nome na mesma categoria
     existing_product = db.query(Product).filter(
         Product.name == product_data.name,
         Product.category_id == product_data.category_id,
     ).first()
-    
+
     if existing_product:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Já existe um produto com o nome '{product_data.name}' nesta categoria",
         )
-    
+
     # Criar novo produto
     new_product = Product(
         name=product_data.name,
@@ -73,7 +66,7 @@ def create_product(
         stock=product_data.stock,
         is_active=True,
     )
-    
+
     db.add(new_product)
     db.commit()
     db.refresh(new_product)

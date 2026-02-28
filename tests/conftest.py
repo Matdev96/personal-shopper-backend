@@ -107,17 +107,16 @@ def test_admin_user(db: Session):
     db.refresh(admin)
     return admin
 
-
-@pytest.fixture(scope="function")
-def test_category(db: Session):
-    """Fixture para criar uma categoria de teste."""
+@pytest.fixture
+def test_category(db):
+    """Fixture para criar uma categoria de teste"""
     category = Category(
         name="Test Category",
-        description="This is a test category for testing purposes",
+        description="A test category for testing purposes"
     )
     db.add(category)
     db.commit()
-    db.refresh(category)
+    db.refresh(category)  # ✅ SOLUÇÃO: Reanexa a categoria à sessão
     return category
 
 
@@ -145,6 +144,70 @@ def test_product(test_category, db):
     db.expunge_all()  # Limpar a sessão
     
     # Consultar novamente para retornar objeto fresco
+    product = db.query(Product).filter(Product.id == product_id).first()
+    return product
+
+@pytest.fixture
+def test_category(db):
+    """Fixture para criar uma categoria de teste"""
+    category = Category(
+        name="Test Category",
+        description="A test category for testing purposes"
+    )
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@pytest.fixture
+def product_payload(db):
+    """Fixture com dados padrão de produto"""
+    # ✅ SOLUÇÃO: Criar a categoria dentro da fixture para garantir sessão ativa
+    category = Category(
+        name="Test Category",
+        description="A test category for testing purposes"
+    )
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    
+    category_id = category.id
+    
+    return {
+        "name": "Test Product",
+        "description": "A test product",
+        "price": 99.99,
+        "size": "M",
+        "color": "Blue",
+        "category_id": category_id,
+        "image_url": "https://example.com/image.jpg",
+        "stock": 100,
+    }
+
+
+@pytest.fixture(scope="function")
+def test_product(test_category, db):
+    """Fixture para criar um produto de teste"""
+    from app.models.product import Product
+    
+    product = Product(
+        name="Test Product",
+        description="This is a test product",
+        price=99.99,
+        size="M",
+        color="Blue",
+        category_id=test_category.id,
+        image_url="https://example.com/image.jpg",
+        stock=100,
+        is_active=True,
+    )
+    db.add(product)
+    db.commit()
+    
+    product_id = product.id
+    db.expunge_all()
+    
     product = db.query(Product).filter(Product.id == product_id).first()
     return product
 

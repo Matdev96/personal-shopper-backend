@@ -166,14 +166,14 @@ class TestOrderStatusUpdateSchema:
     def test_valid_status_update(self):
         """Testar atualização válida de status."""
         update_data = {
-            "new_status": "processing",
+            "new_status": "confirmed",
         }
         update = OrderStatusUpdate(**update_data)
-        assert update.new_status == OrderStatusEnum.PROCESSING
+        assert update.new_status == OrderStatusEnum.CONFIRMED
     
     def test_all_valid_statuses(self):
         """Testar todos os status válidos."""
-        valid_statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
+        valid_statuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"]
         
         for status in valid_statuses:
             update_data = {
@@ -198,7 +198,7 @@ class TestOrderStatusEnum:
     def test_status_enum_values(self):
         """Testar valores do enum de status."""
         assert OrderStatusEnum.PENDING.value == "pending"
-        assert OrderStatusEnum.PROCESSING.value == "processing"
+        assert OrderStatusEnum.CONFIRMED.value == "confirmed"
         assert OrderStatusEnum.SHIPPED.value == "shipped"
         assert OrderStatusEnum.DELIVERED.value == "delivered"
         assert OrderStatusEnum.CANCELLED.value == "cancelled"

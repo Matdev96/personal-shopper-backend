@@ -34,17 +34,46 @@ def user_token(client, test_user):
     )
     return response.json()["access_token"]
 
+@pytest.fixture
+def user_token(client, test_user):
+    """Fixture para obter token de usuário regular"""
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "test@example.com",
+            "password": "TestPassword123!",
+        },
+    )
+    return response.json()["access_token"]
+
 
 @pytest.fixture
-def product_payload(test_category):
+def product_payload(db):
     """Fixture com dados padrão de produto"""
+    from app.models.category import Category
+    
+    # ✅ SOLUÇÃO: Obter a primeira categoria do banco ou criar uma nova
+    category = db.query(Category).first()
+    
+    if not category:
+        # Se não existir, criar uma
+        category = Category(
+            name="Test Category Payload",
+            description="A test category for product payload"
+        )
+        db.add(category)
+        db.commit()
+        db.refresh(category)
+    
+    category_id = category.id
+    
     return {
         "name": "Test Product",
         "description": "A test product",
         "price": 99.99,
         "size": "M",
         "color": "Blue",
-        "category_id": test_category.id,
+        "category_id": category_id,
         "image_url": "https://example.com/image.jpg",
         "stock": 100,
     }

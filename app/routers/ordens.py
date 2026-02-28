@@ -250,7 +250,7 @@ def create_order(
             order_id=order.id,
             product_id=item_data["product_id"],
             quantity=item_data["quantity"],
-            price_at_time=item_data["price_at_time"],
+            price=item_data["price_at_time"],
         )
         db.add(order_item)
         
@@ -306,7 +306,7 @@ def cancel_order(
     if order.status != OrderStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Pedido com status '{order.status.value}' não pode ser cancelado",
+            detail=f"Pedido com status '{order.status}' não pode ser cancelado",
         )
     
     # Atualizar status
@@ -355,11 +355,11 @@ def get_order_status(
         )
     
     return {
-        "order_id": order.id,
-        "status": order.status.value,
-        "created_at": order.created_at,
-        "updated_at": order.updated_at,
-    }
+    "order_id": order.id,
+    "status": order.status,  # ✅ CORRETO - status já é string
+    "created_at": order.created_at,
+    "updated_at": order.updated_at,
+}
 
 
 @router.put("/{order_id}/status", response_model=OrderResponse)

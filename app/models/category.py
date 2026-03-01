@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -15,6 +15,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, index=True, nullable=False)
     description = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)  # ✅ ADICIONE ESTA LINHA
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
@@ -22,4 +23,4 @@ class Category(Base):
     products = relationship("Product", back_populates="category")
     
     def __repr__(self):
-        return f"<Category(id={self.id}, name={self.name})>"
+        return f"<Category(id={self.id}, name={self.name}, is_active={self.is_active})>"

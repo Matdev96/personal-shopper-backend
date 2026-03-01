@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from app.database import Base
 
 
@@ -13,17 +14,18 @@ class Product(Base):
     __tablename__ = "products"
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), index=True, nullable=False)
-    description = Column(Text, nullable=True)
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(String(500), nullable=True)
     price = Column(Float, nullable=False)
     size = Column(String(50), nullable=True)
-    color = Column(String(100), nullable=True)
+    color = Column(String(50), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     image_url = Column(String(500), nullable=True)
-    stock = Column(Integer, default=0)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    stock = Column(Integer, default=0, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    # ✅ CORRIJA ESTAS LINHAS
+    created_at = Column(DateTime, server_default=func.now(), default=datetime.utcnow)
+    updated_at = Column(DateTime, server_default=func.now(), default=datetime.utcnow, onupdate=func.now())
     
     # Relacionamentos
     category = relationship("Category", back_populates="products")
@@ -31,4 +33,4 @@ class Product(Base):
     order_items = relationship("OrderItem", back_populates="product")
     
     def __repr__(self):
-        return f"<Product(id={self.id}, name={self.name}, price={self.price}, size={self.size}, color={self.color}, category_id={self.category_id})>"
+        return f"<Product(id={self.id}, name={self.name}, is_active={self.is_active})>"

@@ -10,8 +10,8 @@ router = APIRouter(prefix="/admin/users", tags=["Admin - Users"])
 
 @router.get("/", response_model=list[UserResponse])
 def list_all_users(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
+    skip: int = Query(0, ge=0),  # ✅ Parâmetro obrigatório
+    limit: int = Query(10, ge=1, le=100),  # ✅ Máximo 100!
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):

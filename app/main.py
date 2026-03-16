@@ -1,36 +1,66 @@
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from pathlib import Path
+import os
+
 from app.database import Base, engine
 from app.core.config import settings
-from app.dependencies import get_db, get_current_user
-from app.models.user import User
-from app.routers import auth_router, categories_router, products_router, stock_router, cart_router, orders_router
+from app.routers import (
+    auth_router,
+    categories_router,
+    products_router,
+    stock_router,
+    cart_router,
+    orders_router,
+    admin_users_router,
+    admin_products_router,
+)
 
-# Criar as tabelas no banco de dados
+# ============================================================================
+# CRIAR AS TABELAS NO BANCO DE DADOS
+# ============================================================================
+
 Base.metadata.create_all(bind=engine)
 
-# Criar a aplicação FastAPI
+# ============================================================================
+# CRIAR A APLICAÇÃO FASTAPI
+# ============================================================================
+
 app = FastAPI(
     title="Personal Shopper API",
     description="API para e-commerce de personal shopper",
     version="1.0.0",
 )
 
-# Configurar CORS
+# ============================================================================
+# CONFIGURAR CORS
+# ============================================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ============================================================================
+# CONFIGURAR ARQUIVOS ESTÁTICOS
+# ============================================================================
+
 # Criar diretório de uploads se não existir
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Criar subdiretórios
+(UPLOAD_DIR / "products").mkdir(exist_ok=True)
+(UPLOAD_DIR / "users").mkdir(exist_ok=True)
 
 # Servir arquivos estáticos (imagens)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -39,13 +69,14 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # INCLUIR ROUTERS
 # ============================================================================
 
-app.include_router(auth_router)
-app.include_router(categories_router)
-app.include_router(products_router)
-app.include_router(stock_router)
-app.include_router(cart_router)
-app.include_router(orders_router)
-
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(categories_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1")
+app.include_router(stock_router, prefix="/api/v1")
+app.include_router(cart_router, prefix="/api/v1")
+app.include_router(orders_router, prefix="/api/v1")
+app.include_router(admin_users_router, prefix="/api/v1")
+app.include_router(admin_products_router, prefix="/api/v1")
 
 # ============================================================================
 # ROTAS PÚBLICAS
@@ -55,11 +86,13 @@ app.include_router(orders_router)
 def read_root():
     """
     Endpoint raiz da API.
+    Retorna informações sobre a API.
     """
     return {
         "message": "Bem-vindo à Personal Shopper API",
         "version": "1.0.0",
         "docs": "/docs",
+        "redoc": "/redoc",
     }
 
 
@@ -67,6 +100,7 @@ def read_root():
 def health_check():
     """
     Verificar se a API está funcionando.
+    Útil para monitoramento e health checks.
     """
     return {
         "status": "ok",

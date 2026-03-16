@@ -104,7 +104,7 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 
         print(f"DEBUG: Criando token de acesso...")
         # Criar token de acesso
-        access_token_expires = timedelta(minutes=30)
+        access_token_expires = timedelta(hours=24)
         access_token = create_access_token(
             data={"sub": user.email},
             expires_delta=access_token_expires,
@@ -120,6 +120,7 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
                 "email": user.email,
                 "username": user.username,
                 "full_name": user.full_name,
+                "is_admin": user.is_admin,  # ✅ CAMPO ADICIONADO
             },
         }
     except Exception as e:

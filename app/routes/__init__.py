@@ -1,3 +1,0 @@
-"""
-Routers - Endpoints da aplicação
-"""

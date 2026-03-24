@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 
@@ -154,9 +154,17 @@ class ProductResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
+
+
+class ProductListResponse(BaseModel):
+    """Schema para resposta paginada de produtos."""
+    items: List[ProductResponse]
+    total: int
+    page: int
+    pages: int
 
 
 class ProductFilterParams(BaseModel):

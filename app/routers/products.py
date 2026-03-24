@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
+from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, ProductListResponse
 from app.models.product import Product
 from app.models.category import Category
 from app.dependencies import get_db, get_current_admin_user
@@ -74,7 +74,7 @@ def create_product(
     return new_product
 
 
-@router.get("", response_model=List[ProductResponse])
+@router.get("", response_model=ProductListResponse)
 def list_products(
     skip: int = 0,
     limit: int = 10,
@@ -154,10 +154,16 @@ def list_products(
     else:
         query = query.order_by(sort_column.desc())
     
+    # Contar total de resultados (antes de paginar)
+    total = query.count()
+
     # Aplicar paginação
     products = query.offset(skip).limit(limit).all()
-    
-    return products
+
+    page = (skip // limit) + 1 if limit > 0 else 1
+    pages = (total + limit - 1) // limit if limit > 0 else 1
+
+    return ProductListResponse(items=products, total=total, page=page, pages=pages)
 
 
 @router.get("/{product_id}", response_model=ProductResponse)

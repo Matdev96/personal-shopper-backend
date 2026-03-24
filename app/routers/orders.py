@@ -232,42 +232,50 @@ def create_order(
             detail="Endereço de entrega é obrigatório",
         )
     
-    # Criar pedido
-    order = Order(
-        user_id=current_user.id,
-        total_price=total_price,
-        shipping_address=order_data.shipping_address,
-        payment_method=order_data.payment_method,
-        status=OrderStatus.PENDING,
-    )
-    
-    db.add(order)
-    db.flush()
-    
-    # Adicionar itens do pedido e atualizar estoque
-    for item_data in order_items_data:
-        order_item = OrderItem(
-            order_id=order.id,
-            product_id=item_data["product_id"],
-            quantity=item_data["quantity"],
-            price=item_data["price_at_time"],
+    # Criar pedido — toda a escrita no banco dentro de um try/except com rollback explícito
+    try:
+        order = Order(
+            user_id=current_user.id,
+            total_price=total_price,
+            shipping_address=order_data.shipping_address,
+            payment_method=order_data.payment_method,
+            status=OrderStatus.PENDING,
         )
-        db.add(order_item)
-        
-        # Atualizar estoque do produto
-        product = db.query(Product).filter(
-            Product.id == item_data["product_id"]
-        ).first()
-        product.stock -= item_data["quantity"]
-    
-    # Limpar carrinho do usuário
-    cart = db.query(Cart).filter(Cart.user_id == current_user.id).first()
-    if cart:
-        db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
-    
-    db.commit()
-    db.refresh(order)
-    
+
+        db.add(order)
+        db.flush()  # gera o order.id sem commitar ainda
+
+        # Adicionar itens do pedido e atualizar estoque
+        for item_data in order_items_data:
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=item_data["product_id"],
+                quantity=item_data["quantity"],
+                price=item_data["price_at_time"],
+            )
+            db.add(order_item)
+
+            # Atualizar estoque do produto
+            product = db.query(Product).filter(
+                Product.id == item_data["product_id"]
+            ).first()
+            product.stock -= item_data["quantity"]
+
+        # Limpar carrinho do usuário
+        cart = db.query(Cart).filter(Cart.user_id == current_user.id).first()
+        if cart:
+            db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+
+        db.commit()
+        db.refresh(order)
+
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno ao processar o pedido. Tente novamente.",
+        )
+
     return order
 
 

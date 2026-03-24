@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from pathlib import Path
 import os
 
 from app.database import Base, engine
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.routers import (
     auth_router,
     categories_router,
@@ -32,6 +35,10 @@ app = FastAPI(
     description="API para e-commerce de personal shopper",
     version="1.0.0",
 )
+
+# Registra o rate limiter na aplicação e define o handler de erro 429
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ============================================================================
 # CONFIGURAR CORS

@@ -1,13 +1,14 @@
 # app/routers/auth.py
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from app.database import SessionLocal
 from app.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
+from app.core.limiter import limiter
 from app.dependencies import get_db, get_current_user
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Registrar um novo usuário.
 
@@ -69,7 +71,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Fazer login e receber um token JWT.
     """

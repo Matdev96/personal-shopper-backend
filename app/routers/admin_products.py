@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -8,6 +9,8 @@ from app.core.admin_security import get_current_admin
 from pathlib import Path
 import shutil
 import uuid
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/products", tags=["Admin - Products"])
 
@@ -44,7 +47,7 @@ def create_product(
     Returns:
         ProductResponse: Dados do produto criado
     """
-    print(f"DEBUG: Criando produto para admin: {current_admin.email}")
+    logger.info("Criando produto para admin: %s", current_admin.email)
 
     # Verificar se a categoria existe
     from app.models.category import Category
@@ -62,7 +65,6 @@ def create_product(
     if image_url:
         # Se tem URL, usar a URL diretamente
         final_image_url = image_url
-        print(f"DEBUG: Usando URL da imagem: {image_url}")
     elif image:
         # Se tem arquivo, fazer upload
         file_extension = image.filename.split(".")[-1]
@@ -74,7 +76,6 @@ def create_product(
             shutil.copyfileobj(image.file, buffer)
         
         final_image_url = f"/uploads/products/{unique_filename}"
-        print(f"DEBUG: Arquivo salvo em: {final_image_url}")
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -151,7 +152,6 @@ def update_product(
     # ✅ NOVO: Processar nova imagem (URL ou arquivo)
     if image_url:
         product.image_url = image_url
-        print(f"DEBUG: Atualizando com URL: {image_url}")
     elif image:
         file_extension = image.filename.split(".")[-1]
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
@@ -161,8 +161,7 @@ def update_product(
             shutil.copyfileobj(image.file, buffer)
         
         product.image_url = f"/uploads/products/{unique_filename}"
-        print(f"DEBUG: Atualizando com arquivo: {product.image_url}")
-    
+
     db.commit()
     db.refresh(product)
     

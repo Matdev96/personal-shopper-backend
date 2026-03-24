@@ -148,19 +148,6 @@ def test_product(test_category, db):
     return product
 
 @pytest.fixture
-def test_category(db):
-    """Fixture para criar uma categoria de teste"""
-    category = Category(
-        name="Test Category",
-        description="A test category for testing purposes"
-    )
-    db.add(category)
-    db.commit()
-    db.refresh(category)
-    return category
-
-
-@pytest.fixture
 def product_payload(db):
     """Fixture com dados padrão de produto"""
     # ✅ SOLUÇÃO: Criar a categoria dentro da fixture para garantir sessão ativa
@@ -184,32 +171,6 @@ def product_payload(db):
         "image_url": "https://example.com/image.jpg",
         "stock": 100,
     }
-
-
-@pytest.fixture(scope="function")
-def test_product(test_category, db):
-    """Fixture para criar um produto de teste"""
-    from app.models.product import Product
-    
-    product = Product(
-        name="Test Product",
-        description="This is a test product",
-        price=99.99,
-        size="M",
-        color="Blue",
-        category_id=test_category.id,
-        image_url="https://example.com/image.jpg",
-        stock=100,
-        is_active=True,
-    )
-    db.add(product)
-    db.commit()
-    
-    product_id = product.id
-    db.expunge_all()
-    
-    product = db.query(Product).filter(Product.id == product_id).first()
-    return product
 
 
 @pytest.fixture(scope="function")

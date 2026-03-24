@@ -1,5 +1,6 @@
 # app/routers/auth.py
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -8,6 +9,8 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
 from app.dependencies import get_db, get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -70,63 +73,49 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Fazer login e receber um token JWT.
     """
-    print(f"DEBUG: Tentando fazer login com email: {credentials.email}")
+    # Buscar usuário pelo email
+    user = db.query(User).filter(User.email == credentials.email).first()
 
-    try:
-        # Buscar usuário pelo email
-        user = db.query(User).filter(User.email == credentials.email).first()
-        print(f"DEBUG: Usuário encontrado: {user}")
-
-        if not user:
-            print(f"DEBUG: Usuário não encontrado")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos",
-            )
-
-        print(f"DEBUG: Verificando senha...")
-        # Verificar a senha
-        if not verify_password(credentials.password, user.hashed_password):
-            print(f"DEBUG: Senha incorreta")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos",
-            )
-
-        print(f"DEBUG: Verificando se usuário está ativo...")
-        # Verificar se o usuário está ativo
-        if not user.is_active:
-            print(f"DEBUG: Usuário inativo")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Usuário inativo",
-            )
-
-        print(f"DEBUG: Criando token de acesso...")
-        # Criar token de acesso
-        access_token_expires = timedelta(hours=24)
-        access_token = create_access_token(
-            data={"sub": user.email},
-            expires_delta=access_token_expires,
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
         )
 
-        print(f"DEBUG: Token criado com sucesso")
+    # Verificar a senha
+    if not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+        )
 
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "username": user.username,
-                "full_name": user.full_name,
-                "is_admin": user.is_admin,  # ✅ CAMPO ADICIONADO
-            },
-        }
-    except Exception as e:
-        print(f"DEBUG: Erro na função login: {str(e)}")
-        print(f"DEBUG: Tipo do erro: {type(e)}")
-        raise
+    # Verificar se o usuário está ativo
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário inativo",
+        )
+
+    # Criar token de acesso
+    access_token_expires = timedelta(hours=24)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    logger.info("Login realizado com sucesso para: %s", credentials.email)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "is_admin": user.is_admin,
+        },
+    }
 
 
 @router.get("/me", response_model=UserResponse)

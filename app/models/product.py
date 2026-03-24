@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.database import Base
 
 
@@ -23,9 +22,8 @@ class Product(Base):
     image_url = Column(String(500), nullable=True)
     stock = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    # ✅ CORRIJA ESTAS LINHAS
-    created_at = Column(DateTime, server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime, server_default=func.now(), default=datetime.utcnow, onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     # Relacionamentos
     category = relationship("Category", back_populates="products")

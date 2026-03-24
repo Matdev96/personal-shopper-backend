@@ -1,9 +1,12 @@
-﻿import os
+﻿import logging
+import os
 import uuid
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
 from fastapi import UploadFile, HTTPException, status
+
+logger = logging.getLogger(__name__)
 
 # Configurações
 UPLOAD_DIR = Path("uploads/products")
@@ -123,5 +126,5 @@ def delete_image(image_path: str) -> None:
             file_path = Path(image_path)
             if file_path.exists():
                 file_path.unlink()
-    except Exception as e:
-        print(f"Erro ao deletar imagem: {e}")
+    except OSError as e:
+        logger.warning("Erro ao deletar imagem '%s': %s", image_path, e)

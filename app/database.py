@@ -18,7 +18,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5
 # Cria o "motor" do banco de dados.
 # connect_args={"check_same_thread": False} é para SQLite, mas não atrapalha no PostgreSQL.
 # echo=True mostra as queries SQL no terminal (útil para debug).
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=os.getenv("SQL_ECHO", "False").lower() == "true")
 
 # Cria uma sessão de banco de dados.
 # autocommit=False: As mudanças não são salvas automaticamente.<br/>

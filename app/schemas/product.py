@@ -140,6 +140,15 @@ class ProductUpdate(BaseModel):
         return v
 
 
+class CategoryInProduct(BaseModel):
+    """Representação resumida da categoria dentro de um produto."""
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
 class ProductResponse(BaseModel):
     """Schema para resposta de produto."""
     id: int
@@ -149,6 +158,7 @@ class ProductResponse(BaseModel):
     size: Optional[str]
     color: Optional[str]
     category_id: int
+    category: Optional[CategoryInProduct] = None
     image_url: Optional[str]
     stock: int
     is_active: bool

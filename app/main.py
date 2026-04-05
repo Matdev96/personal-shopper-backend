@@ -18,6 +18,9 @@ from app.routers import (
     orders_router,
     admin_users_router,
     admin_products_router,
+    requests_router,
+    payments_router,
+    admin_requests_router,
 )
 
 # ============================================================================
@@ -84,6 +87,9 @@ app.include_router(cart_router, prefix="/api/v1")
 app.include_router(orders_router, prefix="/api/v1")
 app.include_router(admin_users_router, prefix="/api/v1")
 app.include_router(admin_products_router, prefix="/api/v1")
+app.include_router(requests_router, prefix="/api/v1")
+app.include_router(payments_router, prefix="/api/v1")
+app.include_router(admin_requests_router, prefix="/api/v1")
 
 # ============================================================================
 # ROTAS PÚBLICAS

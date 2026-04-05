@@ -9,8 +9,9 @@ from app.models.category import Category
 from app.models.product import Product
 from app.models.cart import Cart, CartItem
 from app.models.order import Order, OrderItem, OrderStatus
+from app.models.product_request import ProductRequest, RequestStatus
+from app.models.payment import Payment, PaymentType, PaymentStatus
 
-# Define quais modelos serão exportados quando 'app.models' for importado
 __all__ = [
     "User",
     "Category",
@@ -20,4 +21,9 @@ __all__ = [
     "Order",
     "OrderItem",
     "OrderStatus",
+    "ProductRequest",
+    "RequestStatus",
+    "Payment",
+    "PaymentType",
+    "PaymentStatus",
 ]

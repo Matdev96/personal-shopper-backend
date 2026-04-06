@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
+from app.models.order import Order
 from app.schemas.user import UserResponse
 from app.core.admin_security import get_current_admin
 
@@ -94,6 +95,37 @@ def get_user_orders(
         )
     
     return user.orders
+
+
+@router.put("/{user_id}/toggle-active", response_model=UserResponse)
+def toggle_user_active(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Ativar ou desativar um usuário. Apenas administradores podem acessar."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+    if user.id == current_admin.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível alterar seu próprio status")
+    user.is_active = not user.is_active
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.get("/orders/all")
+def list_all_orders(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Listar todos os pedidos de todos os usuários. Apenas administradores."""
+    orders = db.query(Order).order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+    total = db.query(Order).count()
+    return {"items": orders, "total": total}
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

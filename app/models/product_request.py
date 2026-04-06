@@ -20,10 +20,15 @@ class RequestStatus(str, enum.Enum):
     ENTREGUE = "entregue"
     NAO_ENCONTRADO = "nao_encontrado"
     CANCELADO = "cancelado"
+    ALTERNATIVA_DISPONIVEL = "alternativa_disponivel"
 
 
 # Transições permitidas por papel
-CLIENTE_PODE_CANCELAR = {RequestStatus.PENDENTE, RequestStatus.EM_BUSCA}
+CLIENTE_PODE_CANCELAR = {
+    RequestStatus.PENDENTE,
+    RequestStatus.EM_BUSCA,
+    RequestStatus.ALTERNATIVA_DISPONIVEL,
+}
 CLIENTE_PODE_CONFIRMAR = {RequestStatus.AGUARDANDO_CONFIRMACAO}
 
 ADMIN_TRANSICOES = {

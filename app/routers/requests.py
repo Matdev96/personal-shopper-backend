@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.models.product_request import ProductRequest, RequestStatus, CLIENTE_PODE_CANCELAR
+from app.models.product_request import ProductRequest, RequestStatus, CLIENTE_PODE_CANCELAR, CLIENTE_PODE_CONFIRMAR
 from app.schemas.product_request import (
     ProductRequestCreate,
     ProductRequestResponse,
@@ -128,6 +128,33 @@ def confirm_quoted_price(
         )
 
     req.status = RequestStatus.AGUARDANDO_SINAL.value
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.put("/{request_id}/accept-alternative", response_model=ProductRequestResponse)
+def accept_alternative(
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cliente aceita a alternativa sugerida pela Claudia e avança para aguardar confirmação de preço."""
+    req = db.query(ProductRequest).filter(
+        ProductRequest.id == request_id,
+        ProductRequest.user_id == current_user.id,
+    ).first()
+
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitação não encontrada.")
+
+    if req.status != RequestStatus.ALTERNATIVA_DISPONIVEL.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Só é possível aceitar uma alternativa quando o status é 'alternativa_disponivel'.",
+        )
+
+    req.status = RequestStatus.AGUARDANDO_CONFIRMACAO.value
     db.commit()
     db.refresh(req)
     return req

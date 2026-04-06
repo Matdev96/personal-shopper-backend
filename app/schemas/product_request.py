@@ -79,6 +79,18 @@ class ProductRequestListResponse(BaseModel):
 # Schemas do Admin
 # ---------------------------------------------------------------------------
 
+class AdminSuggestAlternative(BaseModel):
+    quoted_price: float = Field(..., gt=0, description="Preço da alternativa encontrada")
+    alternative_description: str = Field(..., min_length=5, max_length=1000, description="O que foi encontrado (cor, modelo, etc.)")
+    found_image_url: Optional[str] = Field(None, max_length=500)
+
+    @validator("quoted_price")
+    def validate_price(cls, v):
+        if round(v, 2) != v:
+            raise ValueError("Preço deve ter no máximo 2 casas decimais")
+        return v
+
+
 class AdminUpdateStatus(BaseModel):
     status: RequestStatus
     admin_notes: Optional[str] = Field(None, max_length=1000)

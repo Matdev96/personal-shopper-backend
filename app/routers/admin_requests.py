@@ -9,6 +9,7 @@ from app.models.payment import Payment, PaymentStatus
 from app.schemas.product_request import (
     AdminUpdateStatus,
     AdminQuotePrice,
+    AdminSuggestAlternative,
     AdminRequestResponse,
     AdminRequestListResponse,
 )
@@ -114,6 +115,38 @@ def quote_price(
     req.found_image_url = data.found_image_url
     req.admin_notes = data.admin_notes
     req.status = RequestStatus.AGUARDANDO_CONFIRMACAO.value
+
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.put("/{request_id}/suggest-alternative", response_model=AdminRequestResponse)
+def suggest_alternative(
+    request_id: int,
+    data: AdminSuggestAlternative,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Admin sugere uma alternativa quando o produto exato não foi encontrado.
+    Permitido nos status 'em_busca' e 'encontrado'.
+    O cliente poderá aceitar a alternativa ou cancelar a solicitação.
+    """
+    req = db.query(ProductRequest).filter(ProductRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitação não encontrada.")
+
+    if req.status not in [RequestStatus.EM_BUSCA.value, RequestStatus.ENCONTRADO.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Alternativa só pode ser sugerida nos status 'em_busca' ou 'encontrado'.",
+        )
+
+    req.quoted_price = data.quoted_price
+    req.found_image_url = data.found_image_url
+    req.admin_notes = data.alternative_description
+    req.status = RequestStatus.ALTERNATIVA_DISPONIVEL.value
 
     db.commit()
     db.refresh(req)

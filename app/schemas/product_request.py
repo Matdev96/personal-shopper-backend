@@ -57,6 +57,7 @@ class ProductRequestResponse(BaseModel):
     status: str
     quoted_price: Optional[float]
     found_image_url: Optional[str]
+    admin_notes: Optional[str] = None
     deposit_amount: float
     remaining_amount: float
     payments: List[PaymentInRequest] = []

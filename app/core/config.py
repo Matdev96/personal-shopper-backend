@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Email (Gmail SMTP)
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = ""
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+
+    # URL do frontend (usada nos links do email)
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # Debug
     DEBUG: bool = False
     

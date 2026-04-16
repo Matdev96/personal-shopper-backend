@@ -1,13 +1,16 @@
 # app/routers/auth.py
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import secrets
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 from app.database import SessionLocal
 from app.schemas.user import UserCreate, UserLogin, UserResponse, UserUpdate
 from app.models.user import User
+from app.models.password_reset_token import PasswordResetToken
 from app.core.security import hash_password, verify_password, create_access_token
+from app.core.email import send_reset_email
 from app.core.limiter import limiter
 from app.dependencies import get_db, get_current_user
 
@@ -189,3 +192,91 @@ def update_current_user(
     db.refresh(current_user)
 
     return current_user
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@limiter.limit("3/minute")
+async def forgot_password(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    email: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Solicitar recuperação de senha.
+    Gera um token seguro, salva no banco e envia email com o link de reset.
+    Sempre retorna sucesso para não revelar se o email está cadastrado.
+    """
+    user = db.query(User).filter(User.email == email).first()
+
+    if user and user.is_active:
+        # Invalidar tokens anteriores ainda não usados
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used == False,
+        ).update({"used": True})
+
+        # Gerar token seguro
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(reset_token)
+        db.commit()
+
+        # Enviar email em background para não bloquear a resposta
+        background_tasks.add_task(send_reset_email, user.email, token)
+
+    return {"message": "Se este email estiver cadastrado, você receberá as instruções em breve."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    token: str,
+    new_password: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Redefinir senha usando o token recebido por email.
+    Valida o token (existe, não expirou, não foi usado) e atualiza a senha.
+    """
+    reset_token = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token == token,
+        PasswordResetToken.used == False,
+    ).first()
+
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token inválido ou já utilizado.",
+        )
+
+    if datetime.utcnow() > reset_token.expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token expirado. Solicite um novo link de recuperação.",
+        )
+
+    # Validar força da senha (mesmas regras do cadastro)
+    if len(new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha deve ter no mínimo 8 caracteres.")
+    if not any(c.isupper() for c in new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha deve conter pelo menos uma letra maiúscula.")
+    if not any(c.isdigit() for c in new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha deve conter pelo menos um número.")
+    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in new_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha deve conter pelo menos um caractere especial.")
+
+    # Atualizar senha e invalidar token
+    user = db.query(User).filter(User.id == reset_token.user_id).first()
+    user.hashed_password = hash_password(new_password)
+    reset_token.used = True
+
+    db.commit()
+
+    logger.info("Senha redefinida com sucesso para user_id=%s", user.id)
+    return {"message": "Senha redefinida com sucesso. Você já pode fazer login."}

@@ -45,17 +45,26 @@ class UserUpdate(BaseModel):
     """Schema para atualizar usuário."""
     email: Optional[EmailStr] = Field(None, description="Novo email")
     full_name: Optional[str] = Field(
-        None, 
-        min_length=3, 
+        None,
+        min_length=3,
         max_length=100,
         description="Novo nome completo"
     )
     password: Optional[str] = Field(
-        None, 
-        min_length=8, 
+        None,
+        min_length=8,
         max_length=100,
         description="Nova senha"
     )
+    # Endereço de entrega
+    cep: Optional[str] = Field(None, max_length=9, description="CEP (somente números ou com hífen)")
+    logradouro: Optional[str] = Field(None, max_length=200, description="Rua/Avenida")
+    numero: Optional[str] = Field(None, max_length=20, description="Número")
+    complemento: Optional[str] = Field(None, max_length=100, description="Complemento (opcional)")
+    bairro: Optional[str] = Field(None, max_length=100, description="Bairro")
+    cidade: Optional[str] = Field(None, max_length=100, description="Cidade")
+    estado: Optional[str] = Field(None, max_length=2, description="UF do estado (ex: SP)")
+    retirar_na_loja: Optional[bool] = Field(None, description="Preferência de retirada na loja")
     
     @validator('password')
     def validate_password(cls, v):
@@ -80,6 +89,15 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    
+    # Endereço de entrega
+    cep: Optional[str] = None
+    logradouro: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
+    bairro: Optional[str] = None
+    cidade: Optional[str] = None
+    estado: Optional[str] = None
+    retirar_na_loja: bool = False
+
     class Config:
         from_attributes = True

@@ -175,6 +175,16 @@ def update_current_user(
     if user_update.password:
         current_user.hashed_password = hash_password(user_update.password)
 
+    # Atualizar campos de endereço (se foram fornecidos)
+    address_fields = ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado']
+    for field in address_fields:
+        value = getattr(user_update, field)
+        if value is not None:
+            setattr(current_user, field, value)
+
+    if user_update.retirar_na_loja is not None:
+        current_user.retirar_na_loja = user_update.retirar_na_loja
+
     db.commit()
     db.refresh(current_user)
 

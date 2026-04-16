@@ -37,6 +37,7 @@ O repositório do frontend está em: [personal-shopper-frontend](https://github.
 **Autenticação e Usuários**
 - Registro e login com JWT
 - Controle de acesso por nível (admin / usuário)
+- Mensagens de erro amigáveis: credenciais inválidas, usuário inativo e rate limit (429) retornam mensagens em português no mesmo formato
 - Perfil do usuário com endereço de entrega (CEP, logradouro, número, complemento, bairro, cidade, estado)
 - Preferência de entrega: endereço salvo ou retirada na loja
 

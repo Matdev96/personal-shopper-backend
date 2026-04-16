@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
-from slowapi import _rate_limit_exceeded_handler
 from pathlib import Path
 import os
 
@@ -41,7 +41,14 @@ app = FastAPI(
 
 # Registra o rate limiter na aplicação e define o handler de erro 429
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Muitas tentativas. Aguarde 1 minuto e tente novamente."},
+    )
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 # ============================================================================
 # CONFIGURAR CORS

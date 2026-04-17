@@ -38,6 +38,7 @@ O repositório do frontend está em: [personal-shopper-frontend](https://github.
 - Registro e login com JWT
 - Controle de acesso por nível (admin / usuário)
 - Mensagens de erro amigáveis: credenciais inválidas, usuário inativo e rate limit (429) retornam mensagens em português no mesmo formato
+- Recuperação de senha por email (Gmail SMTP via fastapi-mail): token seguro, expira em 1h, uso único
 - Perfil do usuário com endereço de entrega (CEP, logradouro, número, complemento, bairro, cidade, estado)
 - Preferência de entrega: endereço salvo ou retirada na loja
 
@@ -109,6 +110,8 @@ Base URL: `/api/v1`
 | POST | `/auth/login` | — | Login, retorna JWT (5 req/min) |
 | GET | `/auth/me` | Usuário | Dados do usuário logado |
 | PUT | `/auth/me` | Usuário | Atualizar perfil e endereço de entrega |
+| POST | `/auth/forgot-password` | — | Solicitar link de recuperação por email (3 req/min) |
+| POST | `/auth/reset-password` | — | Redefinir senha com token recebido por email |
 
 ### Catálogo, Carrinho e Pedidos
 
@@ -152,14 +155,14 @@ Documentação interativa disponível em `/docs` (Swagger) e `/redoc`.
 
 ## Banco de Dados
 
-Tabelas: `users`, `categories`, `products`, `carts`, `cart_items`, `orders`, `order_items`, `product_requests`, `payments`
+Tabelas: `users`, `categories`, `products`, `carts`, `cart_items`, `orders`, `order_items`, `product_requests`, `payments`, `password_reset_tokens`
 
 Migrations são aplicadas via scripts Python na raiz do projeto:
 
 ```bash
-python run_address_migration.py   # Campos de endereço nos usuários
-python run_stock_migration.py     # Campo stock nos produtos
-# ... outros scripts de migração
+python run_stock_migration.py           # Campo stock nos produtos
+python run_address_migration.py         # Campos de endereço nos usuários
+python run_password_reset_migration.py  # Tabela de tokens de recuperação de senha
 ```
 
 ---
@@ -186,11 +189,12 @@ pip install -r requirements.txt
 
 # Configurar variáveis de ambiente
 cp .env.example .env
-# Editar .env com as credenciais do banco
+# Editar .env com as credenciais do banco e do Gmail
 
 # Aplicar migrations
 python run_stock_migration.py
 python run_address_migration.py
+python run_password_reset_migration.py
 
 # Iniciar servidor
 uvicorn app.main:app --reload
